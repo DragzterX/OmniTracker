@@ -1,0 +1,247 @@
+# OmniTracker - Project Architecture & Engineering Plan
+
+## 1. Project Overview
+
+OmniTracker is a local-first, zero-database entertainment release tracker. It aggregates releases for TV shows, anime, movies, and manga/manhwa from official legal APIs and user-provided custom web feeds (RSS/Atom).
+
+All user state (bookmarks, watch/read history, custom feeds, preferences) is stored locally on the user's filesystem in a clean `omnitrack_data.json` file. The application operates with no centralized user database, ensuring complete privacy, zero hosting costs for user data, and minimal maintenance overhead.
+
+---
+
+## 2. Tech Stack Evaluation & Decisions
+
+### 2.1 Backend: FastAPI vs. Django
+**Selected:** **FastAPI (Python 3.11+)**
+
+| Criteria | FastAPI | Django | Verdict |
+| :--- | :--- | :--- | :--- |
+| **Database Requirement** | None required (Stateless) | Heavy built-in ORM, migrations, user tables | FastAPI fits the zero-database design |
+| **Async Performance** | Native async/await (`asyncio`, `httpx`) | Historically sync; async support is partial | FastAPI handles concurrent external API calls faster |
+| **Learning Curve** | Standard Python functions + type hints (`Pydantic`) | Steep (MTV architecture, ORM, settings, admin) | FastAPI is much easier to learn with pure Python knowledge |
+| **Deployment** | Serverless ready (Vercel, Render, or local background process) | Requires persistent WSGI/ASGI server container | FastAPI enables $0 serverless or lightweight local runs |
+| **API Documentation** | Automatic interactive OpenAPI / Swagger docs (`/docs`) | Requires third-party packages (`drf-spectacular`) | FastAPI provides built-in API testing out of the box |
+
+**Backend Libraries:**
+- **`fastapi`**: Lightweight high-performance API router and gateway.
+- **`httpx`**: Asynchronous HTTP client for fetching TMDB, AniList, and MangaDex APIs concurrently.
+- **`pydantic`**: Strict data validation and schema normalization into a unified `MediaItem` model.
+- **`feedparser`**: Robust RSS/Atom feed parser for arbitrary user-added websites.
+- **`uvicorn`**: High-performance ASGI server for local development and running.
+
+---
+
+### 2.2 Frontend: React + TypeScript (via Vite)
+**Selected:** **Vite + React 19 + TypeScript + Modern Vanilla CSS / CSS Modules**
+
+- **Why Vite + React?** Fast hot-module replacement (HMR), tiny build footprint, and broad ecosystem support.
+- **Why TypeScript?** Prevents data mismatches between Python Pydantic models and frontend components.
+- **Why Vanilla CSS / CSS Modules?** Provides granular control over custom themes (dark mode, glassmorphism, fluid typography) without framework bloat or version conflicts.
+- **File System Integration:** Uses the browser **File System Access API** (`window.showOpenFilePicker` / `showSaveFilePicker`) for zero-friction direct saving to `omnitrack_data.json`, with fallback to standard LocalStorage and JSON Import/Export.
+
+---
+
+### 2.3 Packaging & Portability (2026 Industry Workflow)
+To deliver on the "portable zip / one-click run" requirement:
+1. **Stage 1 (Web + Local Launcher):** A clean `start_omnitracker.bat` script that starts the lightweight backend proxy and opens the web application in the default browser pointing to the chosen local directory.
+2. **Stage 2 (Desktop Executable):** **Tauri v2** shell. It wraps the web frontend into a lightweight (~10-15 MB) native Windows executable (`OmniTracker.exe`), directly utilizing native OS file APIs to read/write `omnitrack_data.json` without browser security prompts.
+
+---
+
+## 3. Directory Structure
+
+The project uses a clean monorepo architecture separating the frontend client, backend proxy, and shared configuration.
+
+```
+OmniTracker/
+│
+├── backend/                             # Python FastAPI Service
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                      # FastAPI app entry point & CORS configuration
+│   │   ├── core/                        # Application configuration & security
+│   │   │   ├── __init__.py
+│   │   │   └── config.py                # Environment variables (API keys, ports)
+│   │   ├── models/                      # Pydantic data schemas
+│   │   │   ├── __init__.py
+│   │   │   ├── media.py                 # MediaItem, ReleaseInfo, Provider schemas
+│   │   │   └── user_data.py             # UserProfile, Bookmark, CustomFeed schemas
+│   │   ├── services/                    # Data connectors to external sources
+│   │   │   ├── __init__.py
+│   │   │   ├── tmdb_service.py          # TV & Movie releases via TMDB API
+│   │   │   ├── anilist_service.py       # Anime releases via AniList GraphQL
+│   │   │   ├── mangadex_service.py      # Manga/Manhwa releases via MangaDex API
+│   │   │   └── feed_service.py          # Custom RSS/Atom feed parser
+│   │   └── api/                         # REST endpoint routers
+│   │       ├── __init__.py
+│   │       ├── search.py                # Universal multi-source search
+│   │       ├── releases.py              # Latest updates & schedule checker
+│   │       ├── feeds.py                 # Endpoint to test and fetch custom feeds
+│   │       └── recommendations.py       # Trending media for discovery
+│   ├── tests/                           # Pytest unit & integration tests
+│   │   ├── test_connectors.py
+│   │   └── test_feed_parser.py
+│   ├── requirements.txt                 # Backend dependencies
+│   └── .env.example                     # Sample configuration
+│
+├── frontend/                            # Vite + React + TypeScript Web App
+│   ├── public/                          # Static assets and icons
+│   ├── src/
+│   │   ├── assets/                      # Application logos, graphics
+│   │   ├── components/                  # Reusable UI components
+│   │   │   ├── common/                  # Buttons, Modals, Dropdowns, Badges
+│   │   │   ├── layout/                  # Navigation bar, Footer, Tab container
+│   │   │   ├── media/                   # MediaCard, ReleaseBadge, ProgressCounter
+│   │   │   └── search/                  # Centered Google-style SearchBar
+│   │   ├── pages/                       # Application Views (Tabs)
+│   │   │   ├── HomePage.tsx             # Centered search & quick status
+│   │   │   ├── ProfileTrackerPage.tsx   # Tracked media, progress +1, pinned items
+│   │   │   ├── AddFeedsPage.tsx         # Manage custom website URLs & RSS feeds
+│   │   │   └── RecommendationsPage.tsx  # Filterable discovery by media type
+│   │   ├── services/                    # Client services & storage handlers
+│   │   │   ├── api.ts                   # Axios/Fetch client for backend
+│   │   │   ├── storage.ts               # File System Access API & omnitrack_data.json handler
+│   │   │   └── recommendation_engine.ts # Client-side tag matching logic
+│   │   ├── types/                       # Shared TypeScript type definitions
+│   │   │   ├── media.ts
+│   │   │   └── storage.ts
+│   │   ├── styles/                      # Design system
+│   │   │   ├── variables.css            # Color tokens, spacing, dark mode palette
+│   │   │   ├── global.css               # Base resets and typography
+│   │   │   └── components/              # Scoped component styles
+│   │   ├── App.tsx                      # Root component with Tab navigation
+│   │   └── main.tsx                     # React DOM entry point
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+│
+├── scripts/                             # Automation & Portability Scripts
+│   ├── start_dev.bat                    # Launches both backend and frontend for development
+│   └── package_portable.py              # Bundles application into a single zip release
+│
+├── docs/                                # Documentation
+│   ├── API_GUIDE.md                     # Endpoints and payload documentation
+│   └── ARCHITECTURE.md                  # System design and data flow diagrams
+│
+└── Project_idea.txt                     # Original project vision & requirements
+```
+
+---
+
+## 4. Universal Data Model
+
+To ensure consistency across TV, Anime, Movies, Manhwa, and custom feeds, all data is normalized into a single model:
+
+```typescript
+// frontend/src/types/media.ts
+export type MediaType = 'tv' | 'movie' | 'anime' | 'manhwa' | 'custom_feed';
+
+export interface ProviderLink {
+  name: string;
+  url: string;
+}
+
+export interface MediaItem {
+  id: string;                      // e.g. "tmdb_tv_1399", "anilist_21", "feed_custom_1"
+  source: 'tmdb' | 'anilist' | 'mangadex' | 'custom';
+  mediaType: MediaType;
+  title: string;
+  originalTitle?: string;
+  coverImage: string;
+  bannerImage?: string;
+  description: string;
+  genres: string[];
+  status: 'ongoing' | 'completed' | 'upcoming' | 'hiatus';
+  
+  // Release Tracking
+  latestRelease: string;           // e.g. "Episode 12", "Chapter 104"
+  latestReleaseNumber: number;     // Normalized numeric progress (12, 104)
+  latestReleaseDate?: string;      // ISO 8601 string
+  nextReleaseDate?: string;        // ISO 8601 string (null if completed or unknown)
+  totalReleases?: number;          // Total episodes or chapters if known
+  
+  // Streaming / Reading Providers
+  officialProviders: ProviderLink[];
+}
+
+export interface UserTrackedItem {
+  mediaId: string;
+  mediaItem: MediaItem;
+  userProgress: number;            // Current episode or chapter reached
+  isPinned: boolean;
+  notes?: string;
+  lastUpdated: string;             // ISO 8601
+}
+
+export interface OmniTrackStorage {
+  version: string;                 // e.g. "1.0.0"
+  lastModified: string;
+  settings: {
+    theme: 'dark' | 'light' | 'system';
+    autoCheckIntervalMinutes: number;
+    guestMode: boolean;
+  };
+  customFeeds: {
+    id: string;
+    name: string;
+    url: string;
+    mediaType: MediaType;
+    lastFetched?: string;
+  }[];
+  trackedItems: Record<string, UserTrackedItem>;
+}
+```
+
+---
+
+## 5. Implementation Roadmap (Phases)
+
+### Phase 1: Foundation & Project Scaffolding
+- Set up the monorepo root structure with `backend/` and `frontend/`.
+- Configure Python environment with `fastapi`, `uvicorn`, `httpx`, `pydantic`, and `feedparser`.
+- Initialize `frontend/` using Vite + React + TypeScript.
+- Define core Pydantic schemas in backend and matching TypeScript interfaces in frontend.
+
+### Phase 2: Backend API Connectors & Normalizer
+- **TMDB Connector:** Fetch TV show and Movie metadata, episode status, and legal streaming links.
+- **AniList Connector:** GraphQL client to query anime release schedules, countdowns, and air dates.
+- **MangaDex Connector:** Query manga and manhwa chapter uploads, translated titles, and cover art.
+- **Custom Feed Parser:** Async endpoint accepting RSS/Atom URLs, extracting entry titles and publication timestamps.
+- **Multi-Source Unified Search:** Aggregates search results across all connectors in parallel.
+
+### Phase 3: Frontend Interface & Design System
+- Create a modern, dark-themed responsive layout with Google-style centered search bar on the Home tab.
+- Implement tab navigation:
+  1. **Home**: Fast omni-search across all media types with quick bookmarking.
+  2. **Profile / Tracker**: Grid/list of tracked items, "+1" instant progress buttons, unread counters, and pinned media.
+  3. **Add Search Websites**: Form to add custom RSS/web links, validate feed health, and view ingested items.
+  4. **Recommendations**: Filterable discovery catalog (by media type and genre) driven by local preferences.
+
+### Phase 4: Local Storage Engine & Portability
+- Implement `storage.ts` using the **File System Access API**:
+  - Automatically loads and saves directly to `omnitrack_data.json`.
+  - Fallback to browser LocalStorage with one-click JSON Export / Import.
+- Build Guest Mode: Allows browsing and tracking in volatile session memory without saving.
+- Create portability scripts: `start_dev.bat` and distribution zip bundling.
+
+### Phase 5: Client-Side Recommendation Logic & Polish
+- Develop `recommendation_engine.ts`:
+  - Analyzes genres and media types of items marked in `omnitrack_data.json`.
+  - Matches against trending API endpoints without transmitting user history to any external server.
+- Add release badges (e.g., "New Episode Out", "Airing in 2 days").
+- Verify clean, production-grade code with full typing and no artificial clutter.
+
+---
+
+## 6. Strategic Recommendations & Enhancements
+
+1. **Browser File System Access API as Default**:
+   Using `window.showSaveFilePicker()` and `FileSystemFileHandle` gives true local file read/write capability directly in Google Chrome / Edge / Brave. The user selects `omnitrack_data.json` once, and the app reads/writes to it seamlessly without needing a heavy desktop runtime right away.
+2. **Release Calendar / Schedule View**:
+   In addition to standard cards, provide a "Release Calendar" tab/toggle showing which of the user's bookmarked shows or chapters are scheduled to air on Monday, Tuesday, etc.
+3. **Smart In-Memory Caching (Backend)**:
+   Add a simple TTL cache (e.g. 10 minutes) on external API requests inside FastAPI so that refreshing the page does not exhaust free TMDB or AniList rate limits.
+4. **Automated Backup Snapshots**:
+   Whenever `omnitrack_data.json` is modified, retain the previous version as `omnitrack_data.backup.json` to prevent data loss in the event of unexpected shutdowns.
+5. **No AI Clutter / High Aesthetic Standards**:
+   Ensure all CSS adheres to clean, modern design standards (high-contrast dark mode, subtle glassmorphism, responsive CSS grid/flexbox) without excessive or distracting decorative emojis.

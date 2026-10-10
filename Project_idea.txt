@@ -1,0 +1,69 @@
+Website will have portable app like function such that user can unzip andd run the application which will re-direct to local website.
+Website(hosted on a github.io) or a downloadable file of the website that finds updates(latest epidoes, latest chapters, release dates, how many chapters or episodes, etc) of tv shows, anime, movies manhwa we search.
+1st, lets use the legal paid app/websites to use as our source to  fetch data.
+There will be options to bookmark tv shows, anime, movies manhwa which can be saved locally.
+2nd, we can add websites we want updates from and as many as we want.
+3rd, options for user to use website with/without personal profile
+4th, if the user wants to keep their profile saved, the data of each user will be exclusively saved to the users device at a specific place on device chosen by user as a saved file. (this is to run a user databases-less website aka less work for me)
+5th, we will add a recommendation page with a dropdown menu(where multiple medias will be shown) where user can choose which media to see. (must need user profile data)
+6th, use differnt tabs for the modules(tab for profile where user can pin certain media they want to track or media episode they want to track like epidsodes they watched they can mark wwatched named Profile, tab for adding websites i want to use for search(i can add as many as i want) named Add Search Websites, tab for recommenddation which will use Profile tab to give user recommendations, i can add others later). search bar to search at homepage something like how google homepage looks aka it wwwill be centred and the top bar wwill have the tabs. 
+-
+future step:
+-make an app on android and ios to give users more flexibility and saves user data to app storage on user phone.
+
+Project Title: OmniTracker (Local-First Entertainment Release Tracker)
+
+System Overview : OmniTrack is a zero-database, zero-installation Portable Desktop Application designed to run entirely offline or online from a user-chosen directory (e.g., local folder like drive wwhich wwill be downloaded via github, unzipped and double clicking the application file will redirect to local website and run the website locally. the user profile data will be saved to that folder). It consolidates release schedules for TV shows, Movies, Anime, and Manhwa/Manga from legal APIs, automatically reading and writing all profile data, bookmarks, and settings to a local .json file stored directly inside the portable app folder.┌────────────────────────────────────────────────────────────────────────┐
+│                   PORTABLE DESKTOP APP (Tauri Window)                  │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                    Frontend UI (React / Next.js)                 │  │
+│  └─────────────────────────────────┬────────────────────────────────┘  │
+│                                    │ Rust Native IPC bridge            │
+│  ┌─────────────────────────────────▼────────────────────────────────┐  │
+│  │              Native File System Engine (Tauri / Rust)            │  │
+│  │    - Auto-reads/writes directly to local 'omnitrack_data.json'   │  │
+│  └─────────────────────────────────┬────────────────────────────────┘  │
+└────────────────────────────────────┼───────────────────────────────────┘
+                                     │ HTTPS Requests
+                                     ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                    BACKEND PROXY (Vercel / FastAPI)                    │
+│  - FastAPI (Python)                                                    │
+│  - Feed Parsers (RSS / Atom / Custom Web Feeds)                        │
+│  - Universal Data Normalizer & CORS Wrapper                            │
+└──────────────────┬──────────────────────────────────┬──────────────────┘
+                   │                                  │
+          Official Data Sync                   Custom User Feeds
+                   ▼                                  ▼
+┌─────────────────────────────────────┐    ┌─────────────────────────────┐
+│ External Media APIs                 │    │ Web RSS / Atom Feeds        │
+│ (TMDB, AniList, MangaDex)           │    │ (User-defined URLs)         │
+└─────────────────────────────────────┘    └─────────────────────────────┘
+Cleaned & Modularized SpecificationsModule 1: Portable App Shell & Direct File System SyncZero-Installation Portable Architecture: Users unzip a single executable (OmniTrack.exe) into any folder or USB drive. Running the executable launches the application UI immediately without writing registry keys or requiring administrator privileges.Direct Local Disk Persistence: User profile data, bookmarks, custom feeds, and reading/watching progress are automatically saved directly to omnitrack_data.json inside the app directory.Native File Operations: Uses native OS file bindings (via Tauri / Rust) so that every bookmark or progress update writes to disk instantly without browser download popups or storage quota limits.Dual Access Modes:Guest Mode: Loads a temporary, non-persisted workspace in memory.Portable Profile Mode: Reads and updates the local omnitrack_data.json state automatically on app launch and shutdown.Module 2: Universal Data Ingestion & API Gateway (FastAPI)Lightweight Serverless Backend Proxy (FastAPI on Vercel): Handles external API key protection and bypasses rate limits.Universal Media Adapter: Converts third-party payloads (TMDB, AniList, MangaDex) into a single TypeScript/Pydantic interface:TypeScriptinterface MediaItem {
+  id: string;               // e.g., "tmdb_12345" or "anilist_67890"
+  mediaType: 'tv' | 'movie' | 'anime' | 'manhwa';
+  title: string;
+  coverImage: string;
+  latestRelease: string;    // e.g., "Episode 12" or "Chapter 104"
+  nextReleaseDate: string;  // ISO 8601 Timestamp
+  totalCount: number;
+  officialProviders: { name: string; url: string }[];
+}
+Official Legal API Connectors:TV Shows & Movies: TMDB API (includes legal streaming platform availability via JustWatch).Anime: AniList GraphQL API (airing schedules and episode counts).Manga / Manhwa: MangaDex API / Kitsu API (chapter updates and publisher links like MangaPlus or Viz).Module 3: Custom Source Sync & Feed ParserUser-Defined Web Updates: Allows users to paste custom RSS, Atom, or JSON endpoint URLs to track updates from any arbitrary website.FastAPI Feed Utility: The Python FastAPI backend uses feedparser and httpx to fetch, parse, and normalize custom feeds into the MediaItem format.Module 4: Client-Side Recommendations & Discovery EngineFilterable Media Catalogue: Dropdown interface filtering media by type (TV, Anime, Movies, Manhwa) and genres.Zero-Server Recommendation Logic: Reads bookmarked genres and watch history from omnitrack_data.json on disk, compares them against trending API outputs, and generates recommendations completely on the local computer without sending user profile data anywhere.Recommended Tech StackLayerRecommended TechnologyPrimary PurposePortable ShellTauri (v2)Extremely lightweight (~10MB executable) desktop shell that compiles to a portable .exe and handles disk read/write permissions.Frontend UINext.js / React + TypeScriptBuild the user interface using modern React code.Styling & UI ComponentsTailwind CSS + shadcn/uiClean, dark-mode accessible UI elements.Backend API ProxyFastAPI (Python 3.11+)Hosted on Vercel ($0 tier) to route API requests to TMDB, AniList, and MangaDex.Data Parsinghttpx + feedparser + pydanticAsync Python parsing for RSS feeds and media API payloads.Implementation Roadmap & Step-by-Step PlanPhase 1: Portable Desktop Shell & Local Storage
+├── Create Tauri + Next.js (React + TypeScript) project on D:\ drive
+├── Implement Rust/Tauri file commands to auto-create and read 'omnitrack_data.json'
+└── Build JSON Import/Export and Backup fallback handlers
+
+Phase 2: Data Proxy Setup (FastAPI on Vercel)
+├── Scaffold FastAPI app in /api folder
+├── Build connectors for TMDB, AniList, and MangaDex with Pydantic models
+└── Implement RSS/Atom feed parsing route
+
+Phase 3: Dashboard UI & Local Release Sync
+├── Build Dashboard displaying bookmarked media with unread chapter/episode flags
+├── Trigger auto-checks against FastAPI backend whenever app launches
+└── Add instant +1 progress buttons that auto-save directly to 'omnitrack_data.json'
+
+Phase 4: Local Recommendation System & Polish
+├── Build Discovery Hub with category dropdown filters
+└── Implement local recommendation engine matching profile tags against API trends
