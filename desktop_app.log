@@ -1,0 +1,64 @@
+[2026-10-23 14:06:48] OmniTracker desktop application starting...
+[2026-10-23 14:06:50] Selected port: 8000
+[2026-10-23 14:06:59] OmniTracker desktop application starting...
+[2026-10-23 14:07:01] Selected port: 8000
+[2026-10-23 14:07:15] Test start
+[2026-10-23 14:08:23] OmniTracker desktop application starting...
+[2026-10-23 14:08:23] Selected port: 8000
+[2026-10-23 14:09:22] OmniTracker desktop application starting...
+[2026-10-23 14:09:22] Selected port: 8000
+[2026-10-23 14:09:22] Uvicorn background thread starting...
+[2026-10-23 14:09:22] Exception in start_server: Traceback (most recent call last):
+  File "C:\Python312\Lib\logging\config.py", line 560, in configure
+    formatters[name] = self.configure_formatter(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\logging\config.py", line 672, in configure_formatter
+    result = self.configure_custom(config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\logging\config.py", line 491, in configure_custom
+    result = c(**kwargs)
+             ^^^^^^^^^^^
+  File "D:\Coding_projects\OmniTracker\backend\.venv\Lib\site-packages\uvicorn\logging.py", line 42, in __init__
+    self.use_colors = sys.stdout.isatty()
+                      ^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'isatty'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Coding_projects\OmniTracker\desktop_app.py", line 48, in start_server
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="error", access_log=False)
+  File "D:\Coding_projects\OmniTracker\backend\.venv\Lib\site-packages\uvicorn\main.py", line 561, in run
+    config = Config(
+             ^^^^^^^
+  File "D:\Coding_projects\OmniTracker\backend\.venv\Lib\site-packages\uvicorn\config.py", line 303, in __init__
+    self.configure_logging()
+  File "D:\Coding_projects\OmniTracker\backend\.venv\Lib\site-packages\uvicorn\config.py", line 398, in configure_logging
+    logging.config.dictConfig(self.log_config)
+  File "C:\Python312\Lib\logging\config.py", line 912, in dictConfig
+    dictConfigClass(config).configure()
+  File "C:\Python312\Lib\logging\config.py", line 563, in configure
+    raise ValueError('Unable to configure '
+ValueError: Unable to configure formatter 'default'
+
+[2026-10-23 14:10:08] OmniTracker desktop application starting...
+[2026-10-23 14:10:08] Selected port: 8000
+[2026-10-23 14:10:08] Uvicorn background thread starting...
+[2026-10-23 14:10:09] FastAPI readiness check result: True
+[2026-10-23 14:10:09] Window created, starting GUI loop...
+[2026-10-23 14:10:27] OmniTracker desktop application starting...
+[2026-10-23 14:10:27] Selected port: 8000
+[2026-10-23 14:10:27] Uvicorn background thread starting...
+[2026-10-23 14:10:28] FastAPI readiness check result: True
+[2026-10-23 14:10:28] Window created, starting GUI loop...
+[2026-10-23 14:10:42] OmniTracker desktop application starting...
+[2026-10-23 14:10:42] Selected port: 8000
+[2026-10-23 14:10:42] Uvicorn background thread starting...
+[2026-10-23 14:10:42] FastAPI readiness check result: True
+[2026-10-23 14:10:42] Window created, starting GUI loop...
+[2026-10-23 14:12:40] OmniTracker desktop application starting...
+[2026-10-23 14:12:40] Selected port: 8000
+[2026-10-23 14:12:40] Uvicorn background thread starting...
+[2026-10-23 14:12:40] FastAPI readiness check result: True
+[2026-10-23 14:12:40] Window created, starting GUI loop...
+[2026-10-23 14:13:54] GUI loop ended by user closing window. Exiting.

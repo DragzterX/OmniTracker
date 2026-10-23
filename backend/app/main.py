@@ -33,12 +33,47 @@ async def health_check():
         "tmdb_configured": bool(settings.TMDB_API_KEY)
     }
 
-@app.get("/")
-async def root():
-    return {
-        "message": "OmniTracker API is running",
-        "docs": "/docs"
-    }
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# frontend dist path
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+
+if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
+    # Mount production assets bundle
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="frontend_assets")
+
+    @app.get("/favicon.svg")
+    async def favicon():
+        fav_path = FRONTEND_DIST / "favicon.svg"
+        if fav_path.exists():
+            return FileResponse(fav_path)
+        return FileResponse(FRONTEND_DIST / "index.html")
+
+    @app.get("/icons.svg")
+    async def icons():
+        icons_path = FRONTEND_DIST / "icons.svg"
+        if icons_path.exists():
+            return FileResponse(icons_path)
+        return FileResponse(FRONTEND_DIST / "index.html")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_path = FRONTEND_DIST / full_path
+        if full_path and file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIST / "index.html")
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "message": "OmniTracker API is running",
+            "docs": "/docs"
+        }
 
 if __name__ == "__main__":
     import uvicorn
